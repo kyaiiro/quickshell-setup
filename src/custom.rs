@@ -1,0 +1,160 @@
+use gtk4::prelude::*;
+use gtk4::{gio, glib, Align, GestureClick, Label};
+use serde::Deserialize;
+use std::process::Command;
+use std::io::{BufRead, BufReader};
+use std::process::Stdio;
+use std::time::Duration;
+
+#[derive(Clone, Copy)]
+pub struct Button {
+    pub name: &'static str,
+    pub label: &'static str,
+    pub tooltip: Option<&'static str>,
+    pub on_click: Option<&'static str>,
+    pub on_click_middle: Option<&'static str>,
+    pub on_click_right: Option<&'static str>,
+}
+
+#[derive(Clone, Copy, Default)]
+pub struct Custom {
+    pub name: &'static str, // CSS class, e.g. "tailscale"
+    pub format: &'static str,
+    pub exec: &'static str,
+    pub interval: u32,
+    pub plain: bool,
+    pub tooltip_format: Option<&'static str>,
+    pub on_click: Option<&'static str>,
+    pub on_click_right: Option<&'static str>,
+}
+
+#[derive(Deserialize)]
+pub struct ScriptOutput {
+    #[serde(default)]
+    text: String,
+    #[serde(default)]
+    class: String,
+    #[serde(default)]
+    tooltip: Option<String>,
+}
+
+fn run_script(cmd: &str, plain: bool) -> Option<ScriptOutput> {
+    let out = Command::new("sh").args(["-c", cmd]).output().ok()?;
+    if plain {
+        let text = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        Some(ScriptOutput { text, class: String::new(), tooltip: None })
+    } else {
+        serde_json::from_slice(&out.stdout).ok()
+    }
+}
+
+pub fn run_detached(cmd: &'static str) {
+    let _ = gio::spawn_blocking(move || {
+        let _ = Command::new("sh").args(["-c", cmd]).status();
+    });
+}
+
+pub fn custom_module(cfg: Custom) -> Label {
+    let label = Label::new(Some(&cfg.format.replace("{}", "")));
+    label.set_css_classes(&[cfg.name]);
+    label.set_valign(Align::Center);
+
+    let l = label.clone();
+    glib::spawn_future_local(async move {
+        loop {
+            if let Ok(Some(out)) =
+                gio::spawn_blocking(move || run_script(cfg.exec, cfg.plain)).await
+            {
+                l.set_text(&cfg.format.replace("{}", &out.text));
+
+                if out.class.is_empty() {
+                    l.set_css_classes(&[cfg.name]);
+                } else {
+                    l.set_css_classes(&[cfg.name, out.class.as_str()]);
+                }
+
+                let tip = match cfg.tooltip_format {
+                    Some(f) => Some(f.replace("{}", &out.text)),
+                    None => out.tooltip,
+                };
+                l.set_tooltip_text(tip.as_deref());
+            }
+            glib::timeout_future_seconds(cfg.interval.max(1)).await;
+        }
+    });
+
+    let click = GestureClick::new();
+    click.set_button(0);
+    click.connect_released(move |gesture, _, _, _| match gesture.current_button() {
+        1 => cfg.on_click.map(run_detached).unwrap_or(()),
+        3 => cfg.on_click_right.map(run_detached).unwrap_or(()),
+        _ => {}
+    });
+    label.add_controller(click);
+
+    label
+}
+
+pub fn button_module(cfg: Button) -> Label {
+    let label = Label::new(Some(cfg.label));
+    label.add_css_class(cfg.name);
+    label.set_valign(Align::Center);
+    label.set_tooltip_text(cfg.tooltip);
+
+    let click = GestureClick::new();
+    click.set_button(0); // listen to every button, then match on which one fired
+    click.connect_released(move |gesture, _, _, _| {
+        let cmd = match gesture.current_button() {
+            1 => cfg.on_click,
+            2 => cfg.on_click_middle,
+            3 => cfg.on_click_right,
+            _ => None,
+        };
+        if let Some(cmd) = cmd {
+            run_detached(cmd);
+        }
+    });
+    label.add_controller(click);
+
+    label
+}
+
+pub fn stream_module(name: &'static str, exec: &'static str) -> Label {
+    let label = Label::new(None);
+    label.add_css_class(name);
+    label.set_valign(Align::Center);
+
+    // Capacity 1 + try_send: if GTK falls behind, skip frames instead of
+    // building up a backlog (which would show as lag in the visualizer)
+    let (tx, rx) = async_channel::bounded::<String>(1);
+
+    std::thread::spawn(move || loop {
+        let child = Command::new("sh")
+            .args(["-c", exec])
+            .stdout(Stdio::piped())
+            .spawn();
+
+        if let Ok(mut child) = child {
+            if let Some(stdout) = child.stdout.take() {
+                for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+                    if let Err(async_channel::TrySendError::Closed(_)) = tx.try_send(line) {
+                        return; // the bar is gone, stop the thread
+                    }
+                }
+            }
+            let _ = child.wait();
+        }
+
+        // Script exited or failed to start: wait a bit, then restart it
+        std::thread::sleep(Duration::from_secs(1));
+    });
+
+    let l = label.clone();
+    glib::spawn_future_local(async move {
+        while let Ok(line) = rx.recv().await {
+            l.set_text(&line);
+        }
+    });
+
+    label
+}
