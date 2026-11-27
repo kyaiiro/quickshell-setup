@@ -1,6 +1,8 @@
 use gtk4::prelude::*;
 use gtk4::{gdk, Application, ApplicationWindow, CenterBox, CssProvider};
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
+mod custom;
+mod left;
 mod center;
 
 fn main() -> gtk4::glib::ExitCode {
@@ -37,6 +39,7 @@ fn build_bar(app: &Application) {
     window.auto_exclusive_zone_enable();
 
     let layout = CenterBox::new();
+    layout.set_start_widget(Some(&left::main_module()));
     layout.set_center_widget(Some(&center::main_module()));
     window.set_child(Some(&layout));
 
