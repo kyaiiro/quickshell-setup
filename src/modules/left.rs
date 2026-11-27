@@ -1,6 +1,6 @@
 use gtk4::prelude::*;
 use gtk4::{Align, Box as GtkBox, Label, Orientation};
-use crate::custom::{button_module, Button, custom_module, Custom, stream_module};
+use crate::modules::custom::{button_module, Button, custom_module, Custom, stream_module};
 
 fn settings_module() -> Label {
     button_module(Button {

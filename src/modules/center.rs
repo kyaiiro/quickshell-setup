@@ -1,7 +1,7 @@
 use gtk4::prelude::*;
 use gtk4::{glib, Align, Box as GtkBox, Label, Orientation};
 
-use crate::custom::{custom_module, Custom};
+use crate::modules::custom::{custom_module, Custom};
 
 fn status_module() -> Label {
     custom_module(Custom {

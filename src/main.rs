@@ -1,9 +1,8 @@
+mod modules;
 use gtk4::prelude::*;
 use gtk4::{gdk, Application, ApplicationWindow, CenterBox, CssProvider};
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
-mod custom;
-mod left;
-mod center;
+use modules::{left, center};
 
 fn main() -> gtk4::glib::ExitCode {
     let app = Application::builder()
