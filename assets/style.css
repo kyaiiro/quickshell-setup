@@ -1,8 +1,10 @@
+/*. All CSS */
+
 /* Make the bar window invisible */
 window.bar {
     background: transparent;
 }
-
+.left,
 .center {
     border-radius: 15px 15px 15px 15px;
     background-color: #010001;
@@ -11,11 +13,40 @@ window.bar {
     margin-top: 2px;
 }
 
-.center label {
+label {
     font-weight: 800;
     font-size: 14px;
     color: #e1c5e1;
 }
+
+/*. Left CSS */
+
+.left {
+    margin-left: 10px;
+}
+
+.settings {
+    padding: 0 10px;
+    color: #e1c5e1;
+}
+
+.dnd {
+    padding: 0 4px;
+    color: #e1c5e1;
+}
+
+.clipboard {
+    padding: 0 12px;
+    color: #e1c5e1;
+}
+
+.cava {
+    padding: 0 12px;
+    color: #e1c5e1;
+    letter-spacing: -1px;
+}
+
+/*. Center CSS */
 
 .clock,
 .status,
