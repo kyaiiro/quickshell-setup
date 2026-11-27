@@ -5,7 +5,8 @@ window.bar {
     background: transparent;
 }
 .left,
-.center {
+.center,
+.right {
     border-radius: 15px 15px 15px 15px;
     background-color: #010001;
     font-family: "JetBrainsMono Nerd Font", "MesloLGS Nerd Font", "Font Awesome";
@@ -72,3 +73,41 @@ label {
 .status.offline { color: gray; }
 .tailscale.up { color: #b2f802; }
 .tailscale.down { color: #ffff00; }
+
+/*. Right CSS */
+
+.right {
+    margin-right: 10px;
+}
+
+.power {
+    padding: 0 15px;
+    color: red;
+    margin-right: 10px;
+    font-size: 15px;
+    font-weight: bolder;
+}
+
+.workspace {
+    font-family: "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font";
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
+    font-size: 22px;
+}
+
+.workspace.empty {
+    color: gray;
+    font-size: 16px;
+}
+
+.workspace.active {
+    color: #010001;
+    background: #e1c5e1;
+    border-radius: 16px;
+}
+
+.notify {
+    padding: 0 12px;
+    color: #e1c5e1;
+}
